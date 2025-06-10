@@ -1,3 +1,15 @@
 pyarrow
 dotenv
 nltk
+
+# for transformer LLM
+#transformers
+#torch
+#pytesseract
+#sentencepiece
+#sacremoses
+
+langchain
+langchain-google-genai
+protobuf==3.20.3
+tensorflow==2.16.2

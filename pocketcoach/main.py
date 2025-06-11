@@ -51,3 +51,49 @@ def preprocess():
     model.save(BASE_MODEL_NAME)
 
     print(f"✅ Model has been trained and stored as {BASE_MODEL_NAME}")
+
+
+def predict(text):
+    print(f"Predicting text {text}")
+    model = tf.keras.models.load_model(BASE_MODEL_NAME)
+
+    cleaned_text = clean(text)
+    with open('tokenizer.pkl', 'rb') as f:
+        tokenizer = pickle.load(f)
+
+    print(f"tokenizer is {tokenizer}")
+
+    padded_input = pad([cleaned_text], tokenizer)
+
+    prediction = model.predict(padded_input)
+
+    keys = ['joy', 'love', 'anger', 'fear', 'surprised']
+    result = dict(zip(keys, prediction[0]))
+
+    print(f"full result: {result}")
+    print(f"most likely emotion: {get_emotion_from_prediction(prediction[0])}")
+    return result
+
+
+def get_emotion_from_prediction(y_pred):
+    highest_proba = -1
+    label_id = -1
+    for i, probability in enumerate(y_pred):
+        print(f"emotion {category(i)} has proba {round(probability, 2)}")
+        if probability > highest_proba:
+            highest_proba = probability
+            label_id = i
+
+    return category(label_id)
+
+def category(id):
+    dict = {
+        0: 'sadness',
+        1: 'joy',
+        2: 'love',
+        3: 'anger',
+        4: 'fear',
+        5: 'surprised'
+    }
+
+    return dict.get(id, f'Invalid id {id}')

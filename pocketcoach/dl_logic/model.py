@@ -1,11 +1,23 @@
-from tensorflow.keras import Sequential, Input, layers
+from keras import Sequential, Input, layers
+import numpy as np
+from pocketcoach.params import *
+from pathlib import Path
+from pocketcoach.dl_logic.data import get_data
+from keras.preprocessing.sequence import pad_sequences
+import tensorflow as tf
 
-def base_model():
+def train_base_model(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    vocab_size
+):
+    """
+    Trains a base model on the training set
+    """
 
-    tk = Tokenizer()
-    tk.fit_on_texts(X)
-    vocab_size = len(tk.word_index)
-
+    print("Creating model architecture")
     embedding_size = 50
 
     model = Sequential()
@@ -14,3 +26,23 @@ def base_model():
     model.add(layers.Flatten())
     model.add(layers.Dense(5,))
     model.add(layers.Dense(6, activation='softmax'))
+
+
+    print("Compiling model")
+    model.compile(loss='sparse_categorical_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy'])
+
+    print("Fitting model")
+    es = tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
+    model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        epochs=50,
+        batch_size=32,
+        verbose=1,
+        callbacks=[es]
+    )
+
+    return model

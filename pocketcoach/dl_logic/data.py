@@ -3,6 +3,8 @@ from pathlib import Path
 import string
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
+import tensorflow as tf
+from keras.preprocessing.sequence import pad_sequences
 
 def get_data(
         cache_path:Path,
@@ -11,6 +13,7 @@ def get_data(
     """
     Retrieve data from `cache_path` if the file exists
     """
+
     if cache_path.is_file():
         print("\nLoad data from local CSV...")
         df = pd.read_csv(cache_path, header='infer' if data_has_header else None)
@@ -44,12 +47,17 @@ def clean(text: str):
     text = ''.join(word for word in text if not word.isdigit())
     for punctuation in string.punctuation:
         text = text.replace(punctuation, '')
-    tokenized = word_tokenize(text)
-    tokenized_lemmatized = lemmatize(tokenized, "v")
-    tokenized_lemmatized = lemmatize(tokenized_lemmatized, "n")
-    cleaned_text = " ".join(tokenized_lemmatized)
+    # tokenized = word_tokenize(text)
+    # tokenized_lemmatized = lemmatize(tokenized, "v")
+    # tokenized_lemmatized = lemmatize(tokenized_lemmatized, "n")
+    # cleaned_text = " ".join(tokenized_lemmatized)
+    # return cleaned_text
 
-    return cleaned_text
+    return text
+
+def pad(X, tk):
+    X_token = tk.texts_to_sequences(X)
+    return pad_sequences(X_token, dtype='float32', padding='post', maxlen=30)
 
 
 def lemmatize(word_tokens, pos):

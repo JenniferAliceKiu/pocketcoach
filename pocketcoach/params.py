@@ -2,3 +2,4 @@ import os
 
 ##################  VARIABLES  ##################
 LOCAL_DATA_PATH = os.environ.get("LOCAL_DATA_PATH")
+BASE_MODEL_NAME = os.environ.get("BASE_MODEL_NAME")

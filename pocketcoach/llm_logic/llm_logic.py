@@ -12,7 +12,6 @@ from langchain.memory import ConversationBufferMemory
 
 chat_model = init_chat_model(model="gemini-2.0-flash", model_provider="google_genai")
 sentiment_analyzer = pipeline("sentiment-analysis")
-memory = ConversationBufferMemory(memory_key="history", return_messages=False)
 
 
 def analyze_sentiment(text: str):
@@ -42,7 +41,7 @@ questions = [
 ]
 
 
-def build_and_run_chain(user_text: str):
+def build_and_run_chain(user_text: str, memory: ConversationBufferMemory):
     #Sentiment
 
     sentiment_label, sentiment_score = analyze_sentiment(user_text)
@@ -68,6 +67,7 @@ def build_and_run_chain(user_text: str):
 
     #Run the chain
     sequence = prompt | chat_model
+
     # Prepare variables
     vars = {
         "sentiment_label": sentiment_label,
@@ -75,6 +75,7 @@ def build_and_run_chain(user_text: str):
         "history": history_str,
         "user_text": user_text,
     }
+
     respnse_msg = sequence.invoke(vars)
 
     response = respnse_msg.content.strip()
@@ -89,6 +90,8 @@ def build_and_run_chain(user_text: str):
 
 
 def main():
+    memory_session = ConversationBufferMemory(memory_key="history", return_messages=False)
+
     print("Chat session started. Type 'exit' to quit.")
 
     first_q = pick_random_question()
@@ -103,7 +106,7 @@ def main():
             break
 
         # Call your build_and_run_chain which uses ConversationBufferMemory internally
-        result = build_and_run_chain(user_input)
+        result = build_and_run_chain(user_input, memory_session)
         # Pretty-print the response
         # e.g., show sentiment and the assistant reply
         sentiment = result["sentiment"]

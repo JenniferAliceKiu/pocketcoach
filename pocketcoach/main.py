@@ -1,4 +1,4 @@
-from pocketcoach.ml_logic.data import get_data, clean_data_set
+from pocketcoach.dl_logic.data import get_data, clean_data_set
 from pocketcoach.params import *
 from pathlib import Path
 

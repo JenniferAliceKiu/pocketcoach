@@ -1,7 +1,7 @@
 ### schemas.py
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class ChatRequest(BaseModel):
     session_id: Optional[str] = None
@@ -9,5 +9,5 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     session_id: str
-    sentiment: dict   # {"label": ..., "score": ...}
+    sentiment: Dict[str, Any]
     llm_response: str

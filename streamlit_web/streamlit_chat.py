@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import random
 
 API_URL = "http://localhost:8000/chat"
 INITIAL_QUESTIONS = [
@@ -11,13 +12,17 @@ INITIAL_QUESTIONS = [
 
 st.set_page_config(page_title="Therapist Chat", page_icon="💬")
 
+
 # --- 1. Initialize session_id from query params if available ---
 if "session_id" not in st.session_state:
-    params = st.experimental_get_query_params()
+    # st.query_params is a dict mapping keys to lists of strings
+    params = st.query_params
     sid = None
     if "session_id" in params and params["session_id"]:
+        # params["session_id"] is a list, take first element
         sid = params["session_id"][0]
     st.session_state.session_id = sid
+
 
 # --- 2. Initialize message history ---
 if "messages" not in st.session_state:
@@ -55,7 +60,7 @@ if user_input := st.chat_input("Your message..."):
             new_sid = data.get("session_id", None)
             if new_sid and new_sid != st.session_state.session_id:
                 st.session_state.session_id = new_sid
-                st.experimental_set_query_params(session_id=new_sid)
+                st.query_params = {"session_id": [new_sid]}
             # 5. Extract assistant reply
             reply = data.get("llm_response", "")
             sentiment = data.get("sentiment")

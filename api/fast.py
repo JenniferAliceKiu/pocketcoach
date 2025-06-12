@@ -3,8 +3,8 @@ from fastapi import FastAPI, HTTPException
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
-from pocketcoach.api.schemas import ChatRequest, ChatResponse
-from pocketcoach.api.chat_manager import (
+from api.schemas import ChatRequest, ChatResponse
+from api.chat_manager import (
     get_or_create_session,
     get_memory_for_session,
     append_to_history,

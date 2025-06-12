@@ -47,3 +47,7 @@ secrets.toml
 
 # User defined extras
 # Complete to your desire
+
+# Sessions folder
+raw_data/
+*.json

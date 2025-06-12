@@ -1,6 +1,6 @@
 from transformers import Pipeline
 import tensorflow as tf
-from pocketcoach.dl_logic.data import pad, clean
+from pocketcoach.dl_logic.data import pad, clean, emotion_of
 
 class ModelPipeline(Pipeline):
 
@@ -43,4 +43,4 @@ class ModelPipeline(Pipeline):
         # Example: softmax and return labels and scores
         output_tensor = model_outputs["output"]
         probs = tf.nn.softmax(output_tensor).numpy().tolist()
-        return [{"score": s, "label": idx} for idx, s in enumerate(probs[0])]
+        return [{"score": s, "label": emotion_of(idx)} for idx, s in enumerate(probs[0])]

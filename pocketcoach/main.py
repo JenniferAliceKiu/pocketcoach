@@ -1,4 +1,4 @@
-from pocketcoach.dl_logic.data import get_data, clean_data_set, pad, clean
+from pocketcoach.dl_logic.data import get_data, clean_data_set, pad, emotion_of
 from pocketcoach.params import *
 from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
@@ -61,7 +61,7 @@ def classify(text):
     mapped_predictions = [
         {
             'score': item['score'],
-            'category': category(item['label'])
+            'category': emotion_of(item['label'])
         }
         for item in prediction
     ]

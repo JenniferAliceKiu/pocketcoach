@@ -126,6 +126,8 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
     # 2. Reconstruct memory
     try:
         memory = await run_in_threadpool(get_memory_for_session, session_id_used)
+        print("Reconstructin memory")
+        memory = await run_in_threadpool(get_memory_for_session, session_id)
     except KeyError:
         logging.exception(f"Session {session_id_used} not found; creating fresh session")
         sid, _ = await run_in_threadpool(get_or_create_session, None)
@@ -157,6 +159,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
         logging.exception(f"Session {session_id_used} disappeared when appending history")
     except Exception:
         logging.exception("Error appending to history")
+
 
     return {"session_id": session_id_used, "sentiment": sentiment, "llm_response": llm_response}
 

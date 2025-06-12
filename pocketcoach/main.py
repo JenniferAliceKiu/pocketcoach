@@ -53,7 +53,7 @@ def preprocess():
     print(f"✅ Model has been trained and stored as {BASE_MODEL_NAME}")
 
 
-def predict(text):
+def classify(text):
     print(f"Predicting text {text}")
     model = load_model()
     prediction = model.predict(text)

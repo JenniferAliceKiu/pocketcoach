@@ -6,7 +6,7 @@ run_preprocess:
 
 # call like that: make test_predict TEXT="I love my wife soooooo much"
 .PHONY: test_predict
-test_predict:
+test_predict
 	@if [ -z "$(TEXT)" ]; then \
 	  echo "Usage: make test_predict TEXT=\"your text here\""; \
 	  exit 1; \

@@ -59,8 +59,6 @@ def predict(text):
     cleaned_text = clean(text)
     tokenizer = load_tokenizer()
 
-    print(f"tokenizer is {tokenizer}")
-
     padded_input = pad([cleaned_text], tokenizer)
 
     prediction = model.predict(padded_input)

@@ -1,6 +1,6 @@
 from transformers import Pipeline
 import tensorflow as tf
-from pocketcoach.dl_logic.data import get_data, clean_data_set, pad, clean
+from pocketcoach.dl_logic.data import pad, clean
 
 class ModelPipeline(Pipeline):
 
@@ -18,8 +18,6 @@ class ModelPipeline(Pipeline):
         self._preprocess_params = {}
         self._forward_params = {}
         self._postprocess_params = {}
-
-        # 👇 The missing attribute causing your latest error
         self.call_count = 0
 
     def _sanitize_parameters(self, **kwargs):

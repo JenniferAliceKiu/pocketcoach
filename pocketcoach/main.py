@@ -3,7 +3,7 @@ from pocketcoach.params import *
 from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
 import tensorflow as tf
-from pocketcoach.dl_logic.tokenizer import save, load_tokenizer
+from pocketcoach.dl_logic.tokenizer import save
 from pocketcoach.dl_logic.model import load_model
 
 def preprocess():

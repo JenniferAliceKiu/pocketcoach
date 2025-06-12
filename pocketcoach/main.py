@@ -4,6 +4,7 @@ from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
 import tensorflow as tf
 from pocketcoach.dl_logic.tokenizer import save, load_tokenizer
+from pocketcoach.dl_logic.model import load_model
 
 def preprocess():
     """
@@ -54,33 +55,19 @@ def preprocess():
 
 def predict(text):
     print(f"Predicting text {text}")
-    model = tf.keras.models.load_model(BASE_MODEL_NAME)
+    model = load_model()
+    prediction = model.predict(text)
 
-    cleaned_text = clean(text)
-    tokenizer = load_tokenizer()
+    mapped_predictions = [
+        {
+            'score': item['score'],
+            'category': category(item['label'])
+        }
+        for item in prediction
+    ]
 
-    padded_input = pad([cleaned_text], tokenizer)
-
-    prediction = model.predict(padded_input)
-
-    keys = ['joy', 'love', 'anger', 'fear', 'surprised']
-    result = dict(zip(keys, prediction[0]))
-
-    print(f"full result: {result}")
-    print(f"most likely emotion: {get_emotion_from_prediction(prediction[0])}")
-    return result
-
-
-def get_emotion_from_prediction(y_pred):
-    highest_proba = -1
-    label_id = -1
-    for i, probability in enumerate(y_pred):
-        print(f"emotion {category(i)} has proba {round(probability, 2)}")
-        if probability > highest_proba:
-            highest_proba = probability
-            label_id = i
-
-    return category(label_id)
+    print(f"Result of the prediction is {mapped_predictions}")
+    return mapped_predictions
 
 def category(id):
     dict = {

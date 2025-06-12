@@ -12,3 +12,6 @@ test_predict:
 	  exit 1; \
 	fi
 	python -c 'import sys; from pocketcoach.main import predict; predict(sys.argv[1])' "$(TEXT)"
+
+run_server_locally:
+	uvicorn api.fast:app --reload

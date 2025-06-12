@@ -3,7 +3,7 @@ from pocketcoach.params import *
 from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
 import tensorflow as tf
-import pickle
+from pocketcoach.dl_logic.tokenizer import save, load_tokenizer
 
 def preprocess():
     """
@@ -25,23 +25,22 @@ def preprocess():
     test_cleaned_df = clean_data_set(test_df)
     validation_cleaned_df = clean_data_set(validation_df)
 
-    print("Tokenize")
+    print("Create Tokenizer")
     X = train_cleaned_df['text']
-    tk = tf.keras.preprocessing.text.Tokenizer()
-    tk.fit_on_texts(X)
+    tokenizer = tf.keras.preprocessing.text.Tokenizer()
+    tokenizer.fit_on_texts(X)
 
-    with open('tokenizer.pkl', 'wb') as f:
-        pickle.dump(tk, f)
+    save(tokenizer)
 
-    vocab_size = len(tk.word_index)
+    vocab_size = len(tokenizer.word_index)
 
-    X_train = pad(X, tk)
+    X_train = pad(X, tokenizer)
     y_train = train_cleaned_df['label']
 
-    X_val = pad(validation_cleaned_df['text'], tk)
+    X_val = pad(validation_cleaned_df['text'], tokenizer)
     y_val = validation_cleaned_df['label']
 
-    X_test = pad(test_cleaned_df['text'], tk)
+    X_test = pad(test_cleaned_df['text'], tokenizer)
     y_test = test_cleaned_df['label']
 
     model = train_base_model(X_train, y_train, X_val, y_val, vocab_size)
@@ -58,8 +57,7 @@ def predict(text):
     model = tf.keras.models.load_model(BASE_MODEL_NAME)
 
     cleaned_text = clean(text)
-    with open('tokenizer.pkl', 'rb') as f:
-        tokenizer = pickle.load(f)
+    tokenizer = load_tokenizer()
 
     print(f"tokenizer is {tokenizer}")
 

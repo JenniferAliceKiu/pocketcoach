@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from tensorflow import keras
 import tempfile
 import librosa
 import numpy as np
@@ -251,3 +252,94 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
             "status": "error",
             "message": str(e)
         }
+"""
+@app.post("/chat_audio")
+async def chat_audio_endpoint(
+    file: UploadFile = File(...),
+    session_id: str = Form(None),
+):
+
+    global whisper_pipe
+    if whisper_pipe is None:
+        raise HTTPException(status_code=500, detail="ASR pipeline not initialized.")
+
+    # 1. Read uploaded bytes
+    try:
+        audio_bytes = await file.read()
+    except Exception as e:
+        logging.exception("Failed to read uploaded audio file")
+        raise HTTPException(status_code=400, detail="Failed to read audio file.")
+
+    # 2. Save to a temporary file (optional) or load directly via librosa/soundfile
+    # We'll try loading from bytes via librosa or soundfile.
+    # librosa.load expects a filename. So we write to a temp file:
+    try:
+        suffix = Path(file.filename).suffix or ".wav"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+        # Load audio at desired sampling rate
+        target_sr = whisper_pipe.feature_extractor.sampling_rate
+        audio_np, sr = librosa.load(tmp_path, sr=target_sr)
+    except Exception as e:
+        logging.exception(f"Error loading audio for transcription: {e}")
+        raise HTTPException(status_code=400, detail="Unsupported or corrupted audio format.")
+    finally:
+        # Clean up temp file
+        try:
+            Path(tmp_path).unlink()
+        except Exception:
+            pass
+
+    # 3. Transcribe
+    try:
+        asr_result = whisper_pipe(audio_np, return_timestamps=True)
+        # asr_result is a dict: {"text": "...", "chunks": [...]}
+        transcription = asr_result.get("text", "").strip()
+        if not transcription:
+            raise ValueError("Empty transcription.")
+    except Exception as e:
+        logging.exception(f"Error during ASR transcription: {e}")
+        raise HTTPException(status_code=500, detail="Error during audio transcription.")
+
+    # 4. Pass transcription to chat logic
+    out = await process_user_message(transcription, session_id)
+    # Merge transcription into response
+    response = {
+        "session_id": out["session_id"],
+        "transcription": transcription,
+        "llm_response": out["llm_response"],
+        "sentiment": out.get("sentiment"),
+    }
+    return response
+"""
+
+@app.post("/upload-audio/")
+async def upload_audio(audio_file: UploadFile = File(...)):
+    # Validate WAV file
+    if not audio_file.filename.endswith('.wav'):
+        raise HTTPException(400, "Only WAV files allowed")
+
+    # Save file
+    file_path = f"raw_data/{audio_file.filename}"
+    with open(file_path, "wb") as f:
+        content = await audio_file.read()
+        f.write(content)
+
+    return {"message": "File uploaded successfully", "filename": audio_file.filename}
+
+
+@app.post("/transcribe-audio/")
+async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
+    if not audio_file.filename.endswith('.wav'):
+        raise HTTPException(400, "Only WAV files allowed")
+    audio_bytes = await audio_file.read()
+    # Save to temp file
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+    try:
+        transcription = transcribe_audio(tmp_path)
+    finally:
+        os.remove(tmp_path)
+    return {"transcription": transcription}

@@ -2,16 +2,16 @@ import os
 import json
 import uuid
 import threading
+import logging
 from datetime import datetime
 from typing import Tuple, List, Dict
+from pathlib import Path
 
 from langchain.memory import ConversationBufferMemory
 
 # Store sessions for long term ### Change to Database in the future
-SESSIONS_DIR = os.path.join(os.getcwd(), "sessions")
-
-# Ensure the directory exists
-os.makedirs(SESSIONS_DIR, exist_ok=True)
+SESSIONS_DIR = Path("sessions")
+SESSIONS_DIR.mkdir(exist_ok=True)
 
 # Global lock to protect file operations in multithreaded context
 _lock = threading.Lock()
@@ -22,56 +22,24 @@ def _session_file_path(session_id: str) -> str:
     """
     return os.path.join(SESSIONS_DIR, f"{session_id}.json")
 
-def get_or_create_session(session_id: str = None) -> Tuple[str, bool]:
-    """
-    If session_id is given and a corresponding file exists, returns (session_id, False).
-    Otherwise, creates a new session file with a new UUID and returns (new_session_id, True).
-    """
-    with _lock:
-        if session_id:
-            path = _session_file_path(session_id)
-            if os.path.isfile(path):
-                # existing session
-                return session_id, False
-        # create new session
-        new_id = str(uuid.uuid4())
-        path = _session_file_path(new_id)
-        # Initial content: created_at and empty messages list
-        data = {
-            "created_at": datetime.utcnow().isoformat() + "Z",
-            "messages": []
-        }
-        # Write to temp and rename preventing corupted/half files
-        tmp_path = path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
-        return new_id, True
+def get_or_create_session(session_id: str):
+    session_file = SESSIONS_DIR / f"{session_id}.json"
+    if not session_file.exists():
+        with open(session_file, "w") as f:
+            json.dump({"messages": []}, f, indent=2)
+    return session_id, not session_file.exists()
 
-def append_to_history(session_id: str, role: str, content: str) -> None:
-    """
-    Append a message to the session's JSON file.
-    Raises KeyError if session not found.
-    """
-    path = _session_file_path(session_id)
-    with _lock:
-        if not os.path.isfile(path):
-            raise KeyError(f"Session {session_id} not found")
-        # Load existing data
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # Append new message with timestamp
-        entry = {
-            "role": role,
-            "content": content,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
-        }
-        data.setdefault("messages", []).append(entry)
-        # Write back (atomic), preventing partial writing to path
-        tmp_path = path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
+def append_to_history(session_id: str, role: str, content: str):
+    session_file = SESSIONS_DIR / f"{session_id}.json"
+    if not session_file.exists():
+        logging.error(f"Session file {session_file} does not exist when trying to append.")
+        raise KeyError("Session file does not exist")
+    with open(session_file, "r") as f:
+        data = json.load(f)
+    data.setdefault("messages", []).append({"role": role, "content": content})
+    with open(session_file, "w") as f:
+        json.dump(data, f, indent=2)
+    logging.info(f"Appended message to {session_file}")
 
 def get_history_for_session(session_id: str) -> List[Dict[str, str]]:
     """

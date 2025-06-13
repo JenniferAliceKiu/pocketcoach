@@ -1,4 +1,5 @@
 import random
+import os
 from transformers import pipeline
 from langchain.chat_models import init_chat_model
 from langchain.prompts.chat import (
@@ -47,7 +48,18 @@ def analyze_sentiment(text: str):
         print(f"[Sentiment] error: {e}")
     return "UNKNOWN", 0.0
 
+_QUESTIONS_CACHE = None
+
+def load_questions():
+    global _QUESTIONS_CACHE
+    if _QUESTIONS_CACHE is None:
+        questions_path = os.path.join(os.path.dirname(__file__), "questions.txt")
+        with open(questions_path, "r", encoding="utf-8") as f:
+            _QUESTIONS_CACHE = [line.strip() for line in f if line.strip()]
+    return _QUESTIONS_CACHE
+
 def pick_random_question() -> str:
+    questions = load_questions()
     return random.choice(questions)
 
 def build_and_run_chain(

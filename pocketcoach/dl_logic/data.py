@@ -68,3 +68,15 @@ def lemmatize(word_tokens, pos):
         WordNetLemmatizer().lemmatize(word, pos=pos)
         for word in word_tokens
     ]
+
+def emotion_of(id):
+    dict = {
+        0: 'sadness',
+        1: 'joy',
+        2: 'love',
+        3: 'anger',
+        4: 'fear',
+        5: 'surprised'
+    }
+
+    return dict.get(id, f'Invalid id {id}')

@@ -20,3 +20,8 @@ fastapi
 soundfile==0.13.1
 librosa
 python-multipart
+
+streamlit
+requests
+transformers
+tf-keras

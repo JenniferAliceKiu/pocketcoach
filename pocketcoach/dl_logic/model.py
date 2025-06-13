@@ -5,6 +5,8 @@ from pathlib import Path
 from pocketcoach.dl_logic.data import get_data
 from keras.preprocessing.sequence import pad_sequences
 import tensorflow as tf
+from pocketcoach.dl_logic.model_pipeline import ModelPipeline
+from pocketcoach.dl_logic.tokenizer import load_tokenizer
 
 def train_base_model(
     X_train,
@@ -46,3 +48,13 @@ def train_base_model(
     )
 
     return model
+
+def load_model():
+    model = model = tf.keras.models.load_model(BASE_MODEL_NAME)
+    tokenizer = load_tokenizer()
+    model_pipeline = ModelPipeline(
+        model=model,
+        tokenizer=tokenizer
+    )
+
+    return model_pipeline

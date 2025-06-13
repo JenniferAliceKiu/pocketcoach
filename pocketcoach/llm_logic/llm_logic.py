@@ -8,6 +8,7 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
 )
 from langchain.memory import ConversationBufferMemory
+from pocketcoach.dl_logic.model import load_model
 
 # Global models to prevent reloding for new sessions
 sentiment_analyzer = None
@@ -32,7 +33,7 @@ def init_models():
     """
     global sentiment_analyzer, chat_model
 
-    sentiment_analyzer = pipeline("sentiment-analysis")
+    sentiment_analyzer = load_model()
     chat_model = init_chat_model(model="gemini-2.0-flash", model_provider="google_genai")
 
 def analyze_sentiment(text: str):
@@ -40,10 +41,11 @@ def analyze_sentiment(text: str):
     Returns (label: str, score: float). On error, returns ("UNKNOWN", 0.0).
     """
     try:
-        res = sentiment_analyzer(text)
-        if isinstance(res, list) and res:
-            item = res[0]
-            return item.get("label", ""), item.get("score", 0.0)
+        classifications = sentiment_analyzer(text)
+        print(f'Result of the classification is: {classifications}')
+        if isinstance(classifications, list) and classifications:
+            top_class = max(classifications, key=lambda x: x['score'])
+            return top_class.get("label", ""), top_class.get("score", 0.0)
     except Exception as e:
         print(f"[Sentiment] error: {e}")
     return "UNKNOWN", 0.0

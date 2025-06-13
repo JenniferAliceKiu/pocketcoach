@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from tensorflow import keras
 import tempfile
 import librosa
 import numpy as np
@@ -266,3 +267,33 @@ async def map(req: ChatRequest):
     emotion_classificaiton = classify(user_text)
 
     return {user_text: emotion_classificaiton}
+
+@app.post("/upload-audio/")
+async def upload_audio(audio_file: UploadFile = File(...)):
+    # Validate WAV file
+    if not audio_file.filename.endswith('.wav'):
+        raise HTTPException(400, "Only WAV files allowed")
+
+    # Save file
+    file_path = f"raw_data/{audio_file.filename}"
+    with open(file_path, "wb") as f:
+        content = await audio_file.read()
+        f.write(content)
+
+    return {"message": "File uploaded successfully", "filename": audio_file.filename}
+
+
+@app.post("/transcribe-audio/")
+async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
+    if not audio_file.filename.endswith('.wav'):
+        raise HTTPException(400, "Only WAV files allowed")
+    audio_bytes = await audio_file.read()
+    # Save to temp file
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+    try:
+        transcription = transcribe_audio(tmp_path)
+    finally:
+        os.remove(tmp_path)
+    return {"transcription": transcription}

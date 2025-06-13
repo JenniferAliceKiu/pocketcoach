@@ -1,9 +1,18 @@
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form #
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path #
+import tempfile #
+import librosa #
+import numpy as np #
+import json
+import uuid
+from fastapi import Body
+from pocketcoach.params import *
 
-from api.schemas import ChatRequest, ChatResponse
+
+from api.schemas import ChatRequest, ChatResponse, LoginRequest
 from api.chat_manager import (
     get_or_create_session,
     get_memory_for_session,
@@ -12,6 +21,23 @@ from api.chat_manager import (
     delete_session,
 )
 from pocketcoach.llm_logic.llm_logic import init_models, pick_random_question, build_and_run_chain
+from transformers import pipeline #
+
+
+import json
+from pathlib import Path
+
+USER_SESSION_FILE = Path("sessions/user_sessions.json")
+
+def get_user_sessions():
+    if USER_SESSION_FILE.exists():
+        with open(USER_SESSION_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_user_sessions(sessions):
+    with open(USER_SESSION_FILE, "w") as f:
+        json.dump(sessions, f, indent=2)
 
 app = FastAPI()
 
@@ -30,8 +56,33 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# System prompt; could be read from env/config
-SYSTEM_PROMPT = "You are a helpful therapist assistant. Be empathetic and concise."
+
+whisper_pipe = None
+
+@app.post("/login")
+async def login(req: LoginRequest):
+    username = req.username
+    sessions = get_user_sessions()
+    if username in sessions:
+        session_id = sessions[username]
+        logging.info(f"Existing user: {username}, session_id: {session_id}")
+    else:
+        session_id = str(uuid.uuid4())
+        sessions[username] = session_id
+        save_user_sessions(sessions)
+        logging.info(f"New user: {username}, session_id: {session_id}")
+
+    # --- Always ensure session file exists and has initial question ---
+    from api.chat_manager import append_to_history, get_or_create_session
+    session_file = Path("sessions") / f"{session_id}.json"
+    if not session_file.exists():
+        await run_in_threadpool(get_or_create_session, session_id)
+        logging.info(f"Session file created for {session_id}")
+        question = pick_random_question()
+        await run_in_threadpool(append_to_history, session_id, "assistant", question)
+        logging.info(f"Initial question written for {session_id}")
+
+    return {"session_id": session_id}
 
 @app.on_event("startup")
 def on_startup():
@@ -48,62 +99,74 @@ async def first_question():
     question = pick_random_question()
     return {"greeting": question}
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(req: ChatRequest):
-    user_text = req.message.strip()
-    if not user_text:
-        raise HTTPException(status_code=400, detail="Empty message is not allowed.")
 
-    # 1. Get or create session (file-based)
+async def process_user_message(user_text: str, session_id: str = None) -> dict:
+    """
+    Process a user message (text), manage session, memory, LLM call, and persisting history.
+    Returns a dict with keys: session_id, sentiment, llm_response.
+    """
+    # 1. Get or create session
     try:
-        session_id, is_new = await run_in_threadpool(get_or_create_session, req.session_id)
-        if is_new:
-            logging.info(f"Created new session: {session_id}")
-        else:
-            logging.info(f"Using existing session: {session_id}")
+        sid, is_new = await run_in_threadpool(get_or_create_session, session_id)
+        session_id_used = sid
     except Exception:
         logging.exception("Error in get_or_create_session; creating new session")
-        session_id, _ = await run_in_threadpool(get_or_create_session, None)
+        sid, _ = await run_in_threadpool(get_or_create_session, None)
+        session_id_used = sid
 
-    # 2. Reconstruct memory from JSON file
+    # 2. Reconstruct memory
     try:
-        memory = await run_in_threadpool(get_memory_for_session, session_id)
+        memory = await run_in_threadpool(get_memory_for_session, session_id_used)
     except KeyError:
-        # Unexpected: session file missing despite just created/validated; create fresh
-        logging.exception(f"Session {session_id} not found when reconstructing memory; creating fresh session")
-        session_id, _ = await run_in_threadpool(get_or_create_session, None)
-        memory = await run_in_threadpool(get_memory_for_session, session_id)
+        logging.exception(f"Session {session_id_used} not found; creating fresh session")
+        sid, _ = await run_in_threadpool(get_or_create_session, None)
+        session_id_used = sid
+        memory = await run_in_threadpool(get_memory_for_session, session_id_used)
     except Exception:
         logging.exception("Unexpected error in get_memory_for_session")
         raise HTTPException(status_code=500, detail="Internal server error loading session history.")
 
-    # 3. Invoke LLM logic (blocking) in threadpool
+    # 3. Call LLM logic in threadpool
     try:
-        result = await run_in_threadpool(
-            build_and_run_chain,
-            user_text,
-            memory,
-            SYSTEM_PROMPT
-        )
+        if is_new:
+            system_prompt = get_system_prompt_with_question()
+        else:
+            system_prompt = SYSTEM_PROMPT
+        result = await run_in_threadpool(build_and_run_chain, user_text, memory, system_prompt)
     except Exception:
         logging.exception("Error in build_and_run_chain")
         raise HTTPException(status_code=500, detail="Internal model error, please try again later.")
 
-    # 4. Persist messages to file: user then assistant
+    llm_response = result.get("llm_response", "")
+    sentiment = result.get("sentiment")
+
+    # 4. Persist messages
     try:
-        await run_in_threadpool(append_to_history, session_id, "user", user_text)
-        await run_in_threadpool(append_to_history, session_id, "assistant", result["llm_response"])
+        await run_in_threadpool(append_to_history, session_id_used, "user", user_text)
+        await run_in_threadpool(append_to_history, session_id_used, "assistant", llm_response)
     except KeyError:
-        logging.exception(f"Session {session_id} disappeared when appending history")
+        logging.exception(f"Session {session_id_used} disappeared when appending history")
     except Exception:
         logging.exception("Error appending to history")
 
-    # 5. Return response including session_id
-    return ChatResponse(
-        session_id=session_id,
-        sentiment=result["sentiment"],
-        llm_response=result["llm_response"],
-    )
+    return {"session_id": session_id_used, "sentiment": sentiment, "llm_response": llm_response}
+
+from api.schemas import ChatRequest, ChatResponse
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(req: ChatRequest):
+    user_text = req.message.strip()
+    # Allow empty message only if this is a new session (no history)
+    if not user_text:
+        # Check if session exists and has history
+        try:
+            history = await run_in_threadpool(get_history_for_session, req.session_id)
+            if history:  # If history is not empty, reject
+                raise HTTPException(status_code=400, detail="Empty message is not allowed.")
+        except KeyError:
+            pass  # No history, allow
+    out = await process_user_message(user_text, req.session_id)
+    return ChatResponse(**out)
 
 @app.get("/chat/{session_id}/history")
 async def get_chat_history(session_id: str):
@@ -133,3 +196,12 @@ async def reset_chat(session_id: str):
         logging.exception("Error deleting session")
         raise HTTPException(status_code=500, detail="Internal server error deleting session")
     return {"detail": "Session reset. Start a new chat by POST /chat with no session_id."}
+
+def get_system_prompt_with_question(username: str = None):
+    question = pick_random_question()
+    base_prompt = SYSTEM_PROMPT
+    if username:
+        base_prompt += f" The user's name is {username}."
+    return (
+        base_prompt + f" Start the conversation by asking the user: \"{question}\""
+    )

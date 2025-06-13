@@ -1,15 +1,19 @@
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form #
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path #
-import tempfile #
-import librosa #
-import numpy as np #
+from pathlib import Path
+import tempfile
+import librosa
+import numpy as np
 import json
 import uuid
 from fastapi import Body
 from pocketcoach.params import *
+import os
+import shutil
+from datetime import datetime
+from pocketcoach.whisper_function import transcribe_audio
 
 
 from api.schemas import ChatRequest, ChatResponse, LoginRequest
@@ -49,6 +53,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "raw_data", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Logging config
 logging.basicConfig(
@@ -197,6 +205,7 @@ async def reset_chat(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error deleting session")
     return {"detail": "Session reset. Start a new chat by POST /chat with no session_id."}
 
+
 def get_system_prompt_with_question(username: str = None):
     question = pick_random_question()
     base_prompt = SYSTEM_PROMPT
@@ -205,3 +214,40 @@ def get_system_prompt_with_question(username: str = None):
     return (
         base_prompt + f" Start the conversation by asking the user: \"{question}\""
     )
+
+#added frm other API file (Jen, from Cursor)
+@app.post("/transcribe")
+async def transcribe_audio_file(file: UploadFile = File(...)):
+    """
+    Endpoint to handle audio file uploads and transcription.
+    """
+
+    try:
+        breakpoint()
+        # Create a unique filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"audio_{timestamp}{file_extension}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Transcribe the audio
+        transcription, saved_file = transcribe_audio(file_path, "online")
+
+        # Clean up the uploaded file
+        os.remove(file_path)
+
+        return {
+            "status": "success",
+            "transcription": transcription,
+            "saved_file": saved_file
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }

@@ -1,9 +1,9 @@
-from pocketcoach.dl_logic.data import get_data, clean_data_set, pad, emotion_of
+from pocketcoach.dl_logic.data import get_data, clean_data_set, pad, clean
 from pocketcoach.params import *
 from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
 import tensorflow as tf
-from pocketcoach.dl_logic.tokenizer import save
+from pocketcoach.dl_logic.tokenizer import save, load_tokenizer
 from pocketcoach.dl_logic.model import load_model
 
 def preprocess():
@@ -57,26 +57,5 @@ def classify(text):
     print(f"Predicting text {text}")
     model = load_model()
     prediction = model.predict(text)
-
-    mapped_predictions = [
-        {
-            'score': item['score'],
-            'category': emotion_of(item['label'])
-        }
-        for item in prediction
-    ]
-
-    print(f"Result of the prediction is {mapped_predictions}")
-    return mapped_predictions
-
-def category(id):
-    dict = {
-        0: 'sadness',
-        1: 'joy',
-        2: 'love',
-        3: 'anger',
-        4: 'fear',
-        5: 'surprised'
-    }
-
-    return dict.get(id, f'Invalid id {id}')
+    print(f"Result of the prediction is {prediction}")
+    return prediction

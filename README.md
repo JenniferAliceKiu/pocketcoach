@@ -10,4 +10,5 @@ This is the backend part of the Pocket Coach. It trains a deep learning model on
 4. Copy the env.sample to .env and populate the necessary env vars
 5. make run_preprocess
 6. make run_server_locally
-7. Server is now running on http://localhost:8000/
+7. On Mac: run "brew install ffmpeg" for whisper
+8. Server is now running on http://localhost:8000/

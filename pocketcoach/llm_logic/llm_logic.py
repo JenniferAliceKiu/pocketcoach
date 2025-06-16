@@ -9,6 +9,7 @@ from langchain.prompts.chat import (
 )
 from langchain.memory import ConversationBufferMemory
 from pocketcoach.dl_logic.model import load_model
+from langchain_google_vertexai import ChatVertexAI
 
 # Global models to prevent reloding for new sessions
 sentiment_analyzer = None
@@ -34,7 +35,8 @@ def init_models():
     global sentiment_analyzer, chat_model
 
     sentiment_analyzer = load_model()
-    chat_model = init_chat_model(model="gemini-2.0-flash", model_provider="google_genai")
+
+    chat_model = ChatVertexAI(model_name="gemini-2.0-flash")
 
 def analyze_sentiment(text: str):
     """

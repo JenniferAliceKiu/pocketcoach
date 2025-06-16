@@ -25,3 +25,4 @@ streamlit
 requests
 transformers
 tf-keras
+langchain_google_vertexai

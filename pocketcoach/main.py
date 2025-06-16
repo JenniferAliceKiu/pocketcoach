@@ -3,7 +3,8 @@ from pocketcoach.params import *
 from pathlib import Path
 from pocketcoach.dl_logic.model import train_base_model
 import tensorflow as tf
-import pickle
+from pocketcoach.dl_logic.tokenizer import save, load_tokenizer
+from pocketcoach.dl_logic.model import load_model
 
 def preprocess():
     """
@@ -25,23 +26,22 @@ def preprocess():
     test_cleaned_df = clean_data_set(test_df)
     validation_cleaned_df = clean_data_set(validation_df)
 
-    print("Tokenize")
+    print("Create Tokenizer")
     X = train_cleaned_df['text']
-    tk = tf.keras.preprocessing.text.Tokenizer()
-    tk.fit_on_texts(X)
+    tokenizer = tf.keras.preprocessing.text.Tokenizer()
+    tokenizer.fit_on_texts(X)
 
-    with open('tokenizer.pkl', 'wb') as f:
-        pickle.dump(tk, f)
+    save(tokenizer)
 
-    vocab_size = len(tk.word_index)
+    vocab_size = len(tokenizer.word_index)
 
-    X_train = pad(X, tk)
+    X_train = pad(X, tokenizer)
     y_train = train_cleaned_df['label']
 
-    X_val = pad(validation_cleaned_df['text'], tk)
+    X_val = pad(validation_cleaned_df['text'], tokenizer)
     y_val = validation_cleaned_df['label']
 
-    X_test = pad(test_cleaned_df['text'], tk)
+    X_test = pad(test_cleaned_df['text'], tokenizer)
     y_test = test_cleaned_df['label']
 
     model = train_base_model(X_train, y_train, X_val, y_val, vocab_size)
@@ -53,47 +53,9 @@ def preprocess():
     print(f"✅ Model has been trained and stored as {BASE_MODEL_NAME}")
 
 
-def predict(text):
+def classify(text):
     print(f"Predicting text {text}")
-    model = tf.keras.models.load_model(BASE_MODEL_NAME)
-
-    cleaned_text = clean(text)
-    with open('tokenizer.pkl', 'rb') as f:
-        tokenizer = pickle.load(f)
-
-    print(f"tokenizer is {tokenizer}")
-
-    padded_input = pad([cleaned_text], tokenizer)
-
-    prediction = model.predict(padded_input)
-
-    keys = ['joy', 'love', 'anger', 'fear', 'surprised']
-    result = dict(zip(keys, prediction[0]))
-
-    print(f"full result: {result}")
-    print(f"most likely emotion: {get_emotion_from_prediction(prediction[0])}")
-    return result
-
-
-def get_emotion_from_prediction(y_pred):
-    highest_proba = -1
-    label_id = -1
-    for i, probability in enumerate(y_pred):
-        print(f"emotion {category(i)} has proba {round(probability, 2)}")
-        if probability > highest_proba:
-            highest_proba = probability
-            label_id = i
-
-    return category(label_id)
-
-def category(id):
-    dict = {
-        0: 'sadness',
-        1: 'joy',
-        2: 'love',
-        3: 'anger',
-        4: 'fear',
-        5: 'surprised'
-    }
-
-    return dict.get(id, f'Invalid id {id}')
+    model = load_model()
+    prediction = model.predict(text)
+    print(f"Result of the prediction is {prediction}")
+    return prediction

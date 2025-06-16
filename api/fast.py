@@ -27,6 +27,7 @@ from api.chat_manager import (
 from pocketcoach.llm_logic.llm_logic import init_models, pick_random_question, build_and_run_chain
 from transformers import pipeline #
 
+from pocketcoach.main import classify
 
 import json
 from pathlib import Path
@@ -125,6 +126,8 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
     # 2. Reconstruct memory
     try:
         memory = await run_in_threadpool(get_memory_for_session, session_id_used)
+        print("Reconstructin memory")
+        memory = await run_in_threadpool(get_memory_for_session, session_id)
     except KeyError:
         logging.exception(f"Session {session_id_used} not found; creating fresh session")
         sid, _ = await run_in_threadpool(get_or_create_session, None)
@@ -156,6 +159,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
         logging.exception(f"Session {session_id_used} disappeared when appending history")
     except Exception:
         logging.exception("Error appending to history")
+
 
     return {"session_id": session_id_used, "sentiment": sentiment, "llm_response": llm_response}
 
@@ -251,3 +255,14 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
             "status": "error",
             "message": str(e)
         }
+
+@app.post("/classify")
+async def map(req: ChatRequest):
+    user_text = req.message.strip()
+    if not user_text:
+        raise HTTPException(status_code=400, detail="Empty message is not allowed.")
+
+    print(f"USER TEXT: {user_text}")
+    emotion_classificaiton = classify(user_text)
+
+    return {user_text: emotion_classificaiton}

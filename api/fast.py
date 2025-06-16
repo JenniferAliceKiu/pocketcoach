@@ -202,7 +202,6 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
     """
 
     try:
-        breakpoint()
         # Create a unique filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_extension = os.path.splitext(file.filename)[1]

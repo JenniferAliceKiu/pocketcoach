@@ -1,6 +1,5 @@
 # Whisper speech-to-Text
 import os
-import keras
 from transformers import pipeline
 from datetime import datetime
 

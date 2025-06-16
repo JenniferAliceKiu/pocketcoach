@@ -5,6 +5,8 @@ import logging
 from typing import List, Dict
 from pathlib import Path
 from langchain.memory import ConversationBufferMemory
+from pocketcoach.llm_logic.llm_logic import pick_random_question
+from pocketcoach.params import *
 
 # Store sessions for long term ### Change to Database in the future
 SESSIONS_DIR = Path("sessions")

@@ -1,17 +1,15 @@
 import os
 import json
-import uuid
 import threading
 import logging
-from datetime import datetime
-from typing import Tuple, List, Dict
+from typing import List, Dict
 from pathlib import Path
-
 from langchain.memory import ConversationBufferMemory
 
 # Store sessions for long term ### Change to Database in the future
 SESSIONS_DIR = Path("sessions")
 SESSIONS_DIR.mkdir(exist_ok=True)
+USER_SESSION_FILE = Path("sessions/user_sessions.json")
 
 # Global lock to protect file operations in multithreaded context
 _lock = threading.Lock()
@@ -100,3 +98,23 @@ def delete_session(session_id: str) -> None:
         if not os.path.isfile(path):
             raise KeyError(f"Session {session_id} not found")
         os.remove(path)
+
+
+def get_system_prompt_with_question(username: str = None):
+    question = pick_random_question()
+    base_prompt = SYSTEM_PROMPT
+    if username:
+        base_prompt += f" The user's name is {username}."
+    return (
+        base_prompt + f" Start the conversation by asking the user: \"{question}\""
+    )
+
+def get_user_sessions():
+    if USER_SESSION_FILE.exists():
+        with open(USER_SESSION_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_user_sessions(sessions):
+    with open(USER_SESSION_FILE, "w") as f:
+        json.dump(sessions, f, indent=2)

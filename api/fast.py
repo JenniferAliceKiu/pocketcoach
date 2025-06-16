@@ -1,21 +1,18 @@
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-from tensorflow import keras
 import tempfile
-import librosa
-import numpy as np
-import json
 import uuid
-from fastapi import Body
 from pocketcoach.params import *
 import os
 import shutil
 from datetime import datetime
 from pocketcoach.whisper_function import transcribe_audio
-
+import soundfile as sf
+import io
+from pathlib import Path
 
 from api.schemas import ChatRequest, ChatResponse, LoginRequest
 from api.chat_manager import (
@@ -24,26 +21,13 @@ from api.chat_manager import (
     append_to_history,
     get_history_for_session,
     delete_session,
+    get_system_prompt_with_question,
+    get_user_sessions,
+    save_user_sessions,
 )
 from pocketcoach.llm_logic.llm_logic import init_models, pick_random_question, build_and_run_chain
-from transformers import pipeline #
-
 from pocketcoach.main import classify
 
-import json
-from pathlib import Path
-
-USER_SESSION_FILE = Path("sessions/user_sessions.json")
-
-def get_user_sessions():
-    if USER_SESSION_FILE.exists():
-        with open(USER_SESSION_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_user_sessions(sessions):
-    with open(USER_SESSION_FILE, "w") as f:
-        json.dump(sessions, f, indent=2)
 
 app = FastAPI()
 
@@ -210,16 +194,6 @@ async def reset_chat(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error deleting session")
     return {"detail": "Session reset. Start a new chat by POST /chat with no session_id."}
 
-
-def get_system_prompt_with_question(username: str = None):
-    question = pick_random_question()
-    base_prompt = SYSTEM_PROMPT
-    if username:
-        base_prompt += f" The user's name is {username}."
-    return (
-        base_prompt + f" Start the conversation by asking the user: \"{question}\""
-    )
-
 #added frm other API file (Jen, from Cursor)
 @app.post("/transcribe")
 async def transcribe_audio_file(file: UploadFile = File(...)):
@@ -288,12 +262,25 @@ async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
     if not audio_file.filename.endswith('.wav'):
         raise HTTPException(400, "Only WAV files allowed")
     audio_bytes = await audio_file.read()
-    # Save to temp file
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp.write(audio_bytes)
-        tmp_path = tmp.name
+
+    tmp_path = None
     try:
+        # Try to read the audio bytes as a WAV file
+        audio_buffer = io.BytesIO(audio_bytes)
+        data, samplerate = sf.read(audio_buffer)
+
+        # Use the resampled data
+        data_2 = data[:, :1].reshape(-1)
+
+        # Save as a proper WAV file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            sf.write(tmp.name, data_2, samplerate)
+            tmp_path = tmp.name
+        # Transcribe
         transcription = transcribe_audio(tmp_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not decode or transcribe audio: {e}")
     finally:
-        os.remove(tmp_path)
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
     return {"transcription": transcription}

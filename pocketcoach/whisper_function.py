@@ -57,7 +57,7 @@ def transcribe_audio(audio_file_path, model_type="online"):
 
     # Perform transcription
     print(f"\nTranscribing with {model_type} model...")
-    result = transcription_pipe(audio_file_path, return_timestamps=True, language='en')
+    result = transcription_pipe(audio_file_path, return_timestamps=True)
 
     # Save transcription
     saved_file_path = save_transcription(result, model_type)

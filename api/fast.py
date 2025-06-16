@@ -67,7 +67,6 @@ async def login(req: LoginRequest):
         logging.info(f"New user: {username}, session_id: {session_id}")
 
     # --- Always ensure session file exists and has initial question ---
-    from api.chat_manager import append_to_history, get_or_create_session
     session_file = Path("sessions") / f"{session_id}.json"
     if not session_file.exists():
         await run_in_threadpool(get_or_create_session, session_id)
@@ -138,7 +137,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
 
     # 4. Persist messages
     try:
-        await run_in_threadpool(append_to_history, session_id_used, "user", user_text)
+        await run_in_threadpool(append_to_history, session_id_used, "user", user_text, sentiment)
         await run_in_threadpool(append_to_history, session_id_used, "assistant", llm_response)
     except KeyError:
         logging.exception(f"Session {session_id_used} disappeared when appending history")
@@ -146,7 +145,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
         logging.exception("Error appending to history")
 
 
-    return {"session_id": session_id_used, "sentiment": sentiment, "llm_response": llm_response}
+    return {"session_id": session_id_used, "llm_response": llm_response}
 
 from api.schemas import ChatRequest, ChatResponse
 

@@ -29,14 +29,17 @@ def get_or_create_session(session_id: str):
             json.dump({"messages": []}, f, indent=2)
     return session_id, not session_file.exists()
 
-def append_to_history(session_id: str, role: str, content: str):
+def append_to_history(session_id: str, role: str, content: str, sentiment=None):
     session_file = SESSIONS_DIR / f"{session_id}.json"
     if not session_file.exists():
         logging.error(f"Session file {session_file} does not exist when trying to append.")
         raise KeyError("Session file does not exist")
     with open(session_file, "r") as f:
         data = json.load(f)
-    data.setdefault("messages", []).append({"role": role, "content": content})
+    message = {"role": role, "content": content}
+    if sentiment is not None:
+        message["sentiment"] = sentiment
+    data.setdefault("messages", []).append(message)
     with open(session_file, "w") as f:
         json.dump(data, f, indent=2)
     logging.info(f"Appended message to {session_file}")

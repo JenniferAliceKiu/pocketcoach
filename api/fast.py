@@ -193,42 +193,6 @@ async def reset_chat(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error deleting session")
     return {"detail": "Session reset. Start a new chat by POST /chat with no session_id."}
 
-#added frm other API file (Jen, from Cursor)
-@app.post("/transcribe")
-async def transcribe_audio_file(file: UploadFile = File(...)):
-    """
-    Endpoint to handle audio file uploads and transcription.
-    """
-
-    try:
-        # Create a unique filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_extension = os.path.splitext(file.filename)[1]
-        unique_filename = f"audio_{timestamp}{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
-        # Save the uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # Transcribe the audio
-        transcription, saved_file = transcribe_audio(file_path, "online")
-
-        # Clean up the uploaded file
-        os.remove(file_path)
-
-        return {
-            "status": "success",
-            "transcription": transcription,
-            "saved_file": saved_file
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-
 @app.post("/classify")
 async def map(req: ChatRequest):
     user_text = req.message.strip()
@@ -239,21 +203,6 @@ async def map(req: ChatRequest):
     emotion_classificaiton = classify(user_text)
 
     return {user_text: emotion_classificaiton}
-
-@app.post("/upload-audio/")
-async def upload_audio(audio_file: UploadFile = File(...)):
-    # Validate WAV file
-    if not audio_file.filename.endswith('.wav'):
-        raise HTTPException(400, "Only WAV files allowed")
-
-    # Save file
-    file_path = f"raw_data/{audio_file.filename}"
-    with open(file_path, "wb") as f:
-        content = await audio_file.read()
-        f.write(content)
-
-    return {"message": "File uploaded successfully", "filename": audio_file.filename}
-
 
 @app.post("/transcribe-audio/")
 async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):

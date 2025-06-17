@@ -147,7 +147,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
             if sid == session_id_used:
                 username = user
                 break
-
+        print("Calling bigquery logging")
         log_to_bigquery(
             user_uuid=session_id_used,
             sentiment=sentiment.get("label") if sentiment else None,
@@ -155,6 +155,7 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
             assistant_message=llm_response,
             sentiment_value=sentiment.get("score", 0.0) if sentiment else 0.0,
             user_name=username,
+
         )
 
     except KeyError:
@@ -235,14 +236,14 @@ async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
         data, samplerate = sf.read(audio_buffer)
 
         # Use the resampled data
-        data_2 = data[:, :1].reshape(-1)
+        data = data[:, :1].reshape(-1)
 
         # Save as a proper WAV file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            sf.write(tmp.name, data_2, samplerate)
+            sf.write(tmp.name, data, samplerate)
             tmp_path = tmp.name
         # Transcribe
-        transcription = transcribe_audio(tmp_path)
+        transcription = transcribe_audio(tmp_path, model_type = "local")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not decode or transcribe audio: {e}")
     finally:

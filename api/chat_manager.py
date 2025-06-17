@@ -129,10 +129,12 @@ def save_user_sessions(sessions):
 
 
 def log_to_bigquery(user_uuid, sentiment, user_message, assistant_message, sentiment_value, user_name,  timestamp=None):
+    print("initializing client")
     client = bigquery.Client(project="lewagon-bootcamp-457509")
     table_id = "lewagon-bootcamp-457509.pocketcoachbq.user_sentiment"
     if timestamp is None:
         timestamp = datetime.utcnow().isoformat()
+    print("ready to write to BigQuery")
     row = {
         "user_uuid": user_uuid,
         "user_name": user_name,
@@ -143,5 +145,6 @@ def log_to_bigquery(user_uuid, sentiment, user_message, assistant_message, senti
         "sentiment_value": sentiment_value,
     }
     errors = client.insert_rows_json(table_id, [row])
+    print("apparently wrote to bq")
     if errors:
         print("BigQuery insert errors:", errors)

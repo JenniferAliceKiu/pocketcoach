@@ -55,5 +55,4 @@ docker_deploy:
 		--image $(DOCKER_IMAGE_PATH):prod \
 		--memory $(GAR_MEMORY) \
 		--region $(GCP_REGION) \
-		--service-account=service-account@lewagon-bootcamp-457509.iam.gserviceaccount.com \
 		--env-vars-file .env.yaml

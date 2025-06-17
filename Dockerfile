@@ -10,7 +10,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Copy and install Python dependencies
-COPY requirements.txt ./
+COPY requirements_prod.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
 
@@ -21,8 +21,8 @@ COPY models     ./models
 COPY tokenizer.pkl ./tokenizer.pkl
 
 # (Optional) expose the port and set a default
-ENV PORT=8000
-EXPOSE $PORT
+#ENV PORT=8000
+#EXPOSE $PORT
 
 # Start the app via Uvicorn
-CMD ["uvicorn", "api.fast:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.fast:app", "--host", "0.0.0.0", "--port", "$PORT"]

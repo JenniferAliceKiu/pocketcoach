@@ -14,14 +14,17 @@ langchain-google-vertexai==2.0.25
 librosa==0.11.0
 narwhals==1.42.0
 nltk==3.9.1
+pip==25.1.1
 pylint==3.3.7
 pytest==8.4.0
 python-multipart==0.0.20
 seaborn==0.13.2
 tf_keras==2.16.0
-torch==2.2.2
 tinycss2==1.4.0
-transformers==4.49.0
+transformers==4.52.4
 uri-template==1.3.0
 uvicorn==0.34.3
 webcolors==24.11.1
+# torch==2.6.0+cpu
+https://download.pytorch.org/whl/cpu-cxx11-abi/torch-2.6.0%2Bcpu.cxx11.abi-cp312-cp312-linux_x86_64.whl ; platform_machine == "x86_64"
+https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp312-cp312-manylinux_2_28_aarch64.whl; platform_machine == "aarch64"

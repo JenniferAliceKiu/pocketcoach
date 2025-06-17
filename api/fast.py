@@ -213,7 +213,7 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
 
         # Transcribe the audio
-        transcription, saved_file = transcribe_audio(file_path, "online")
+        transcription, saved_file = transcribe_audio(file_path, "local")
 
         # Clean up the uploaded file
         os.remove(file_path)
@@ -269,14 +269,14 @@ async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
         data, samplerate = sf.read(audio_buffer)
 
         # Use the resampled data
-        data_2 = data[:, :1].reshape(-1)
+        #data_2 = data[:, :1].reshape(-1)
 
         # Save as a proper WAV file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            sf.write(tmp.name, data_2, samplerate)
+            sf.write(tmp.name, data, samplerate)
             tmp_path = tmp.name
         # Transcribe
-        transcription = transcribe_audio(tmp_path)
+        transcription = transcribe_audio(tmp_path, "local")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not decode or transcribe audio: {e}")
     finally:

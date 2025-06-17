@@ -19,6 +19,7 @@ from api.chat_manager import (
     get_or_create_session,
     get_memory_for_session,
     append_to_history,
+    log_to_bigquery,
     get_history_for_session,
     delete_session,
     get_system_prompt_with_question,
@@ -52,7 +53,7 @@ logging.basicConfig(
 
 
 whisper_pipe = None
-
+username = None
 @app.post("/login")
 async def login(req: LoginRequest):
     username = req.username
@@ -139,6 +140,17 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
     try:
         await run_in_threadpool(append_to_history, session_id_used, "user", user_text, sentiment)
         await run_in_threadpool(append_to_history, session_id_used, "assistant", llm_response)
+
+
+        log_to_bigquery(
+            user_uuid=session_id_used,
+            sentiment=sentiment.get("label") if sentiment else None,
+            user_message=user_text,
+            assistant_message=llm_response,
+            sentiment_value=sentiment.get("score", 0.0) if sentiment else 0.0,
+            user_name=username,
+        )
+
     except KeyError:
         logging.exception(f"Session {session_id_used} disappeared when appending history")
     except Exception:

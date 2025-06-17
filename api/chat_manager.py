@@ -7,6 +7,9 @@ from pathlib import Path
 from langchain.memory import ConversationBufferMemory
 from pocketcoach.llm_logic.llm_logic import pick_random_question
 from pocketcoach.params import *
+from google.cloud import bigquery
+from datetime import datetime
+import os
 
 # Store sessions for long term ### Change to Database in the future
 SESSIONS_DIR = Path("sessions")
@@ -123,3 +126,22 @@ def get_user_sessions():
 def save_user_sessions(sessions):
     with open(USER_SESSION_FILE, "w") as f:
         json.dump(sessions, f, indent=2)
+
+
+def log_to_bigquery(user_uuid, sentiment, user_message, assistant_message, sentiment_value, user_name,  timestamp=None):
+    client = bigquery.Client(project="lewagon-bootcamp-457509")
+    table_id = "lewagon-bootcamp-457509.pocketcoachbq.user_sentiment"
+    if timestamp is None:
+        timestamp = datetime.utcnow().isoformat()
+    row = {
+        "user_uuid": user_uuid,
+        "user_name": user_name,
+        "timestamp": timestamp,
+        "sentiment": sentiment,
+        "user_message": user_message,
+        "assistant_message": assistant_message,
+        "sentiment_value": sentiment_value,
+    }
+    errors = client.insert_rows_json(table_id, [row])
+    if errors:
+        print("BigQuery insert errors:", errors)

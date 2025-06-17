@@ -53,7 +53,7 @@ logging.basicConfig(
 
 
 whisper_pipe = None
-username = None
+
 @app.post("/login")
 async def login(req: LoginRequest):
     username = req.username
@@ -141,6 +141,12 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
         await run_in_threadpool(append_to_history, session_id_used, "user", user_text, sentiment)
         await run_in_threadpool(append_to_history, session_id_used, "assistant", llm_response)
 
+        sessions = get_user_sessions()
+        username = None
+        for user, sid in sessions.items():
+            if sid == session_id_used:
+                username = user
+                break
 
         log_to_bigquery(
             user_uuid=session_id_used,

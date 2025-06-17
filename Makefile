@@ -24,9 +24,9 @@ DOCKER_IMAGE_PATH := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(DOCKER_REPO_N
 docker_show_image_path:
 	@echo $(DOCKER_IMAGE_PATH)
 
+#		--platform linux/amd64
 docker_build:
 	docker build \
-		--platform linux/amd64 \
 		-t $(DOCKER_IMAGE_PATH):prod .
 
 docker_run:
@@ -55,5 +55,5 @@ docker_deploy:
 		--image $(DOCKER_IMAGE_PATH):prod \
 		--memory $(GAR_MEMORY) \
 		--region $(GCP_REGION) \
-		--service-account=service-account@le-wagon-bootcamp-457510.iam.gserviceaccount.com \
+		--service-account=service-account@lewagon-bootcamp-457509.iam.gserviceaccount.com \
 		--env-vars-file .env.yaml

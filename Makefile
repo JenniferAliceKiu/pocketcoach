@@ -24,10 +24,12 @@ DOCKER_IMAGE_PATH := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(DOCKER_REPO_N
 docker_show_image_path:
 	@echo $(DOCKER_IMAGE_PATH)
 
-#		--platform linux/amd64
 docker_build:
 	docker build \
+		--platform linux/amd64 \
 		-t $(DOCKER_IMAGE_PATH):prod .
+#		--no-cache
+#		--progress=plain
 
 docker_run:
 	docker run \

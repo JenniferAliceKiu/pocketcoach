@@ -155,7 +155,6 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
             assistant_message=llm_response,
             sentiment_value=sentiment.get("score", 0.0) if sentiment else 0.0,
             user_name=username,
-
         )
 
     except KeyError:

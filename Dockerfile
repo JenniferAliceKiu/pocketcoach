@@ -10,9 +10,13 @@ RUN apt-get update \
 WORKDIR /app
 
 # Copy and install Python dependencies
-COPY requirements_prod.txt ./requirements.txt
+COPY requirements_prod.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
+
+# DEBUG: show which torch got installed
+RUN python -c "import torch; print('torch version:', torch.__version__)" \
+ && pip show torch
 
 # Copy application code
 COPY api        ./api
@@ -25,4 +29,4 @@ COPY tokenizer.pkl ./tokenizer.pkl
 #EXPOSE $PORT
 
 # Start the app via Uvicorn
-CMD ["uvicorn", "api.fast:app", "--host", "0.0.0.0", "--port", "$PORT"]
+CMD ["sh","-c","uvicorn api.fast:app --host 0.0.0.0 --port ${PORT}"]

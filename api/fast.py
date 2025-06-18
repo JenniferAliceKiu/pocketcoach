@@ -19,6 +19,7 @@ from api.chat_manager import (
     get_or_create_session,
     get_memory_for_session,
     append_to_history,
+    log_to_bigquery,
     get_history_for_session,
     delete_session,
     get_system_prompt_with_question,
@@ -67,7 +68,6 @@ async def login(req: LoginRequest):
         logging.info(f"New user: {username}, session_id: {session_id}")
 
     # --- Always ensure session file exists and has initial question ---
-    from api.chat_manager import append_to_history, get_or_create_session
     session_file = Path("sessions") / f"{session_id}.json"
     if not session_file.exists():
         await run_in_threadpool(get_or_create_session, session_id)
@@ -138,15 +138,32 @@ async def process_user_message(user_text: str, session_id: str = None) -> dict:
 
     # 4. Persist messages
     try:
-        await run_in_threadpool(append_to_history, session_id_used, "user", user_text)
+        await run_in_threadpool(append_to_history, session_id_used, "user", user_text, sentiment)
         await run_in_threadpool(append_to_history, session_id_used, "assistant", llm_response)
+
+        sessions = get_user_sessions()
+        username = None
+        for user, sid in sessions.items():
+            if sid == session_id_used:
+                username = user
+                break
+        print("Calling bigquery logging")
+        log_to_bigquery(
+            user_uuid=session_id_used,
+            sentiment=sentiment.get("label") if sentiment else None,
+            user_message=user_text,
+            assistant_message=llm_response,
+            sentiment_value=sentiment.get("score", 0.0) if sentiment else 0.0,
+            user_name=username,
+        )
+
     except KeyError:
         logging.exception(f"Session {session_id_used} disappeared when appending history")
     except Exception:
         logging.exception("Error appending to history")
 
 
-    return {"session_id": session_id_used, "sentiment": sentiment, "llm_response": llm_response}
+    return {"session_id": session_id_used, "llm_response": llm_response}
 
 from api.schemas import ChatRequest, ChatResponse
 
@@ -194,42 +211,6 @@ async def reset_chat(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error deleting session")
     return {"detail": "Session reset. Start a new chat by POST /chat with no session_id."}
 
-#added frm other API file (Jen, from Cursor)
-@app.post("/transcribe")
-async def transcribe_audio_file(file: UploadFile = File(...)):
-    """
-    Endpoint to handle audio file uploads and transcription.
-    """
-
-    try:
-        # Create a unique filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_extension = os.path.splitext(file.filename)[1]
-        unique_filename = f"audio_{timestamp}{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
-        # Save the uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # Transcribe the audio
-        transcription, saved_file = transcribe_audio(file_path, "online")
-
-        # Clean up the uploaded file
-        os.remove(file_path)
-
-        return {
-            "status": "success",
-            "transcription": transcription,
-            "saved_file": saved_file
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-
 @app.post("/classify")
 async def map(req: ChatRequest):
     user_text = req.message.strip()
@@ -240,21 +221,6 @@ async def map(req: ChatRequest):
     emotion_classificaiton = classify(user_text)
 
     return {user_text: emotion_classificaiton}
-
-@app.post("/upload-audio/")
-async def upload_audio(audio_file: UploadFile = File(...)):
-    # Validate WAV file
-    if not audio_file.filename.endswith('.wav'):
-        raise HTTPException(400, "Only WAV files allowed")
-
-    # Save file
-    file_path = f"raw_data/{audio_file.filename}"
-    with open(file_path, "wb") as f:
-        content = await audio_file.read()
-        f.write(content)
-
-    return {"message": "File uploaded successfully", "filename": audio_file.filename}
-
 
 @app.post("/transcribe-audio/")
 async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
@@ -269,14 +235,14 @@ async def transcribe_audio_endpoint(audio_file: UploadFile = File(...)):
         data, samplerate = sf.read(audio_buffer)
 
         # Use the resampled data
-        data_2 = data[:, :1].reshape(-1)
+        data = data[:, :1].reshape(-1)
 
         # Save as a proper WAV file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            sf.write(tmp.name, data_2, samplerate)
+            sf.write(tmp.name, data, samplerate)
             tmp_path = tmp.name
         # Transcribe
-        transcription = transcribe_audio(tmp_path)
+        transcription = transcribe_audio(tmp_path, model_type = "local")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not decode or transcribe audio: {e}")
     finally:

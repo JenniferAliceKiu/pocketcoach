@@ -7,6 +7,9 @@ from pathlib import Path
 from langchain.memory import ConversationBufferMemory
 from pocketcoach.llm_logic.llm_logic import pick_random_question
 from pocketcoach.params import *
+from google.cloud import bigquery
+from datetime import datetime
+import os
 
 # Store sessions for long term ### Change to Database in the future
 SESSIONS_DIR = Path("sessions")
@@ -29,14 +32,17 @@ def get_or_create_session(session_id: str):
             json.dump({"messages": []}, f, indent=2)
     return session_id, not session_file.exists()
 
-def append_to_history(session_id: str, role: str, content: str):
+def append_to_history(session_id: str, role: str, content: str, sentiment=None):
     session_file = SESSIONS_DIR / f"{session_id}.json"
     if not session_file.exists():
         logging.error(f"Session file {session_file} does not exist when trying to append.")
         raise KeyError("Session file does not exist")
     with open(session_file, "r") as f:
         data = json.load(f)
-    data.setdefault("messages", []).append({"role": role, "content": content})
+    message = {"role": role, "content": content}
+    if sentiment is not None:
+        message["sentiment"] = sentiment
+    data.setdefault("messages", []).append(message)
     with open(session_file, "w") as f:
         json.dump(data, f, indent=2)
     logging.info(f"Appended message to {session_file}")
@@ -120,3 +126,25 @@ def get_user_sessions():
 def save_user_sessions(sessions):
     with open(USER_SESSION_FILE, "w") as f:
         json.dump(sessions, f, indent=2)
+
+
+def log_to_bigquery(user_uuid, sentiment, user_message, assistant_message, sentiment_value, user_name,  timestamp=None):
+    print("initializing client")
+    client = bigquery.Client(project="lewagon-bootcamp-457509")
+    table_id = "lewagon-bootcamp-457509.pocketcoachbq.user_sentiment"
+    if timestamp is None:
+        timestamp = datetime.utcnow().isoformat()
+    print("ready to write to BigQuery")
+    row = {
+        "user_uuid": user_uuid,
+        "user_name": user_name,
+        "timestamp": timestamp,
+        "sentiment": sentiment,
+        "user_message": user_message,
+        "assistant_message": assistant_message,
+        "sentiment_value": sentiment_value,
+    }
+    errors = client.insert_rows_json(table_id, [row])
+    print("apparently wrote to bq")
+    if errors:
+        print("BigQuery insert errors:", errors)

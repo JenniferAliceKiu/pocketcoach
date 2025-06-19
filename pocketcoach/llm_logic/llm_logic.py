@@ -18,8 +18,6 @@ chat_model = None
 # Prompt template
 SYSTEM_TEMPLATE = (
     "{system_prompt} The results of the sentiment classifier show that the person is {sentiment_label}. "
-    "Please prioritize this analysis above your own! Never mention that you analyse the person's feelings. "
-    "Limit yourself to 200-300 characters."
 )
 PROMPT_TEMPLATE = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template(SYSTEM_TEMPLATE),

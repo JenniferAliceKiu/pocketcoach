@@ -12,3 +12,15 @@ This is the backend part of the Pocket Coach. It trains a deep learning model on
 6. make run_server_locally
 7. On Mac: run "brew install ffmpeg" for whisper
 8. Server is now running on http://localhost:8000/
+
+
+
+## Prompt engineering:
+
+In pocketcoach/llm_logic.py there is the following line:
+
+SYSTEM_TEMPLATE = (
+    "{system_prompt} The results of the sentiment classifier show that the person is {sentiment_label}. "
+)
+
+This is the only in-code prompt engineering. All additional prompt engineering is happening in the system_prompt.txt file, which will be then fed into the SYSTEM_TEMPLATE {system_prompt}.

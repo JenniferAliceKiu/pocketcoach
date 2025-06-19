@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    ports:
+      - "3000:3000"   # Metabase UI → localhost:3000
+    volumes:
+      - ./metabase-data:/metabase-data            # persist Metabase internal DB & settings
+      - ./gcp-sa.json:/gcp-sa.json:ro             # your BigQuery credentials
+    environment:
+      # Metabase internal DB: here we use the default H2 file under /metabase-data
+      MB_DB_FILE: /metabase-data/metabase.db
+      # Tell Metabase (and the BigQuery driver) where to find your GCP key
+      GOOGLE_APPLICATION_CREDENTIALS: GOOGLE_APPLICATION_CREDENTIALS
+      # (Optional) if you want to preseed an admin user:
+      # MB_ENFORCE_PASSWORD_COMPLEXITY=false
+      # MB_SETUP_ADMIN_EMAIL=you@example.com
+      # MB_SETUP_ADMIN_PASSWORD=supersecret
